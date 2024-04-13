@@ -1,9 +1,7 @@
 apiVersion: v1
 data:
   index.html: |-
-    <body bgcolor="#000000">
-    <h1 style="color:white;">Hello gitops-app running2!</h1>
-    </body>
+    <body bgcolor="#000000"><h1 style="color:white;">Hello gitops-app running!!!</h1></body>
 kind: ConfigMap
 metadata:
   name: landing-page
