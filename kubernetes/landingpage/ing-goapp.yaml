@@ -4,7 +4,7 @@ metadata:
   name: goapp
 spec:
   rules:
-  - host: goapp.54.173.227.103.sslip.io
+  - host: eder-app.54.173.227.103.sslip.io
     http:
       paths:
       - backend:
