@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template para aprovisionar a stack da atividade 1 parte 2
+
+Resources:
+  # Definição da VPC principal
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: MyVPC
+
+  # Sub-rede pública dentro da VPC
+  MyPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: MyPublicSubnet
+
+  # Internet Gateway para comunicação externa
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: MyInternetGateway
+
+  # Anexo do Internet Gateway à VPC
+  MyVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  # Tabela de rotas para gerenciar tráfego
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: MyRouteTable
+
+  # Rota pública na tabela de rotas
+  MyPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: MyVPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  # Associação da tabela de rotas à sub-rede pública
+  MySubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MyPublicSubnet
+      RouteTableId: !Ref MyRouteTable
+
+  # Grupo de segurança para controle de acesso
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP Access via port 80
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: HttpAccess
+
+  # Instância EC2 configurada com Apache
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: vockey
+      ImageId: ami-01816d07b1128cd2d
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          SubnetId: !Ref MyPublicSubnet
+          DeviceIndex: 0
+          GroupSet:
+            - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y httpd
+          systemctl start httpd
+          systemctl enable httpd
+          echo "<h1>Aplicação de Teste para Trabalho Final de Arquitetura AWS</h1>" > /var/www/html/index.html
+
+Outputs:
+  # Saída do IP público da instância
+  InstancePublicIP:
+    Description: IP Publico da EC2 instance
+    Value: !GetAtt MyEC2Instance.PublicIp
+
+  # Saída do ID da VPC
+  VpcId:
+    Description: VPC ID
+    Value: !Ref MyVPC
+
+  # Saída do ID do grupo de segurança
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref MySecurityGroup
+
+  # Saída do ID da instância
+  InstanceID:
+    Description: Instance ID
+    Value: !Ref MyEC2Instance
